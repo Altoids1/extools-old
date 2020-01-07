@@ -6,6 +6,7 @@
 #include "../extended_profiling/extended_profiling.h"
 #include "../debug_server/debug_server.h"
 #include "../maptick/maptick.h"
+#include "../altmos/altmos.h"
 #include <fstream>
 #include <unordered_set>
 #include <chrono>
@@ -298,6 +299,13 @@ extern "C" EXPORT const char* enable_extended_profiling(int n_args, const char**
 extern "C" EXPORT const char* disable_extended_profiling(int n_args, const char** args)
 {
 	procs_to_profile.erase(Core::get_proc(args[0]).id); //TODO: improve consistency and reconsider how initialization works
+	return good;
+}
+
+extern "C" EXPORT const char* altmos_initialize(int n_args, const char** args)
+{
+	if (!(Core::initialize() && altmos::initialize()))
+		return bad;
 	return good;
 }
 
