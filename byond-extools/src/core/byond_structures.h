@@ -55,18 +55,18 @@ struct Value
 	Value(const char* s);
 
 
-	constexpr static trvh Null() {
+	inline static Value Null() {
 		return { 0, 0 };
 	}
 
-	constexpr static trvh True()
+	inline static Value True()
 	{
 		trvh t{0x2A};
 		t.valuef = 1.0f;
 		return t;
 	}
 
-	constexpr static trvh False()
+	inline static Value False()
 	{
 		return { 0x2A, 0 };
 	}
