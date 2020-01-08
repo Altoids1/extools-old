@@ -36,8 +36,14 @@ float heat_capacity(Value gas_mixture) // Cousin of /datum/gas_mixture/proc/heat
 trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum/gas_reaction/tritfire/react(datum/gas_mixture/air, datum/holder)
 {
 	trvh Dot;
+    Dot.type = 0x2A; // Number
+    if (!n_args)
+    {
+        Dot.valuef = NO_REACTION;
+        return Dot;
+    }
     Value air = args[0];
-    Value holder = args[1];
+    Value holder = (n_args > 1) ? args[1] : Value::Null();
     //
     if (Core::stringify(air.get("type")).find("/datum/gas_mixture") == std::string::npos)
     {
@@ -86,27 +92,26 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
         float new_heat_capacity = heat_capacity(air);
         if (new_heat_capacity > MINIMUM_HEAT_CAPACITY)
         {
-            air.set("temperature", (temperature * old_heat_capacity + energy_released) / new_heat_capacity);
+            temperature = (temperature * old_heat_capacity + energy_released) / new_heat_capacity;
+            air.set("temperature", Value(temperature));
         }
     }
     if (location != Value::Null())
     {
-        temperature = air.get("temperature");
         if (temperature > FIRE_MINIMUM_TEMPERATURE_TO_EXIST)
         {
             std::vector<Value> nargs = { temperature, CELL_VOLUME };
-            Core::get_proc("/turf/open/proc/hotspot_expose", 0).call(nargs,Value::Null(),location);
+            location.invoke("/turf/open/proc/hotspot_expose", nargs);
             nargs = { air, temperature, CELL_VOLUME };
             Container contents = Core::get_proc("/proc/safe_contents").call({location},Value::Null(),src);
             int container_size = contents.length();
             for (int i = 0; i < container_size; ++i)
             {
-                Core::get_proc(Core::stringify(Value(contents[i]).get("type")) + "/proc/temperature_expose", 0).call(nargs, Value::Null(), contents[i]); // Mac save me please
+               Value(contents[i]).invoke("/proc/temperature_expose", nargs); // Mac save me please
             }
-            Core::get_proc(Core::stringify(Value(location).get("type")) + "/proc/temperature_expose", 0).call(nargs, Value::Null(), location); // Mac save me please
+            location.invoke("/proc/temperature_expose", nargs); // Mac save me please
         }
     }
-    Dot.type = 0x2A; // Number
     Dot.valuef = (Value(cached_results["fire"]).valuef != 0) ? REACTING : NO_REACTION;
     return Dot;
 }
