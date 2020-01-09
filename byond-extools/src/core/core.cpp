@@ -46,6 +46,10 @@ DisconnectClient2Ptr DisconnectClient2;
 GetSocketHandleStructPtr GetSocketHandleStruct;
 CallProcByNamePtr CallProcByName;
 SendMapsPtr SendMaps;
+GetGlobalByNamePtr GetGlobalByName;
+GetTableHolderThingyByIdPtr GetTableHolderThingyById;
+DecRefCountPtr DecRefCount;
+IncRefCountPtr IncRefCount;
 
 ExecutionContext** Core::current_execution_context_ptr;
 ExecutionContext** Core::parent_context_ptr_hack;
@@ -62,6 +66,40 @@ std::map<unsigned int, opcode_handler> Core::opcode_handlers;
 std::map<std::string, unsigned int> Core::name_to_opcode;
 unsigned int next_opcode_id = 0x1337;
 bool Core::initialized = false;
+unsigned int* Core::name_table_id_ptr = nullptr;
+unsigned int* Core::name_table = nullptr;
+Value* Core::global_var_table = nullptr;
+std::unordered_map<std::string, Value*> Core::global_direct_cache;
+
+Core::ManagedString::ManagedString(unsigned int id) : string_id(id)
+{
+	string_entry = GetStringTableEntry(string_id);
+	string_entry->refcount++;
+}
+
+Core::ManagedString::ManagedString(std::string str)
+{
+	string_id = GetStringId(str);
+	string_entry = GetStringTableEntry(string_id);
+	string_entry->refcount++;
+}
+
+Core::ManagedString::ManagedString(const ManagedString& other)
+{
+	string_id = other.string_id;
+	string_entry = other.string_entry;
+	string_entry->refcount++;
+}
+
+Core::ManagedString::~ManagedString()
+{
+	string_entry->refcount--;
+}
+
+Core::ManagedString Core::GetManagedString(std::string str)
+{
+	return ManagedString(str);
+}
 
 bool Core::initialize()
 {
@@ -87,10 +125,18 @@ void Core::Alert(int what)
 	Alert(std::to_string(what));
 }
 
-unsigned int Core::GetStringId(std::string str) {
+unsigned int Core::GetStringId(std::string str, bool increment_refcount) {
 	switch (ByondVersion) {
-		case 512:
-			return GetStringTableIndex(str.c_str(), 0, 1);
+	case 512:
+		{
+			int idx = GetStringTableIndex(str.c_str(), 0, 1);
+			if (increment_refcount)
+			{
+				String* str = GetStringTableEntry(idx);
+				str->refcount++;
+			}
+			return idx; //this could cause memory problems with a lot of long strings but otherwise they get garbage collected after first use.
+		}
 		case 513:
 			return GetStringTableIndexUTF8(str.c_str(), 0, 0, 1);
 		default: break;
@@ -315,6 +361,44 @@ std::uint32_t Core::get_socket_from_client(unsigned int id)
 	return ((Hellspawn*)(str - 0x74))->handle;
 }
 
+Value* locate_global_by_name(std::string name)
+{
+	unsigned int varname = Core::GetStringId(name);
+	TableHolderThingy* tht = GetTableHolderThingyById(*Core::name_table_id_ptr);
+	int id;
+	for (id = 0; id < tht->length; id++) // add binary search here
+	{
+		if (Core::name_table[tht->elements[id]] == varname)
+		{
+			break;
+		}
+	}
+	return &Core::global_var_table[tht->elements[id]];
+}
+
+void Core::global_direct_set(std::string name, Value val)
+{
+	if (global_direct_cache.find(name) != global_direct_cache.end())
+	{
+		*global_direct_cache[name] = val;
+		return;
+	}
+	Value* var = locate_global_by_name(name);
+	*var = val;
+	global_direct_cache[name] = var;
+}
+
+Value Core::global_direct_get(std::string name)
+{
+	if (global_direct_cache.find(name) != global_direct_cache.end())
+	{
+		return *global_direct_cache[name];
+	}
+	Value* var = locate_global_by_name(name);
+	global_direct_cache[name] = var;
+	return *var;
+}
+
 
 void Core::disconnect_client(unsigned int id)
 {
@@ -337,6 +421,7 @@ void Core::cleanup()
 	procs_by_name.clear();
 	procs_to_profile.clear();
 	proc_hooks.clear();
+	global_direct_cache.clear();
 	Core::initialized = false; // add proper modularization already
 }
 
@@ -385,7 +470,7 @@ bool flood_topic_filter(BSocket* socket, int socket_id)
 	auto last = last_packets[addr];
 	if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count() < 50)
 	{
-		Core::alert_dd("Blacklisting " + addr + " for this session.\n");
+		Core::alert_dd("Blacklisting " + addr + " for this session.");
 		blacklist.emplace(addr);
 		last_packets.erase(addr);
 		Core::disconnect_client(socket_id);
@@ -423,6 +508,7 @@ extern "C" EXPORT const char* install_flood_topic_filter(int n_args, const char*
 	{
 		return bad;
 	}
+	ban_callback = {};
 	if (n_args == 1)
 	{
 		ban_callback = Core::try_get_proc(args[0]);

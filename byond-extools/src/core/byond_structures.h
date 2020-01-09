@@ -32,6 +32,14 @@ struct trvh //temporary return value holder, used for sidestepping the fact that
 	};
 };
 
+namespace Core
+{
+	struct ManagedString;
+}
+
+struct ManagedValue;
+
+
 struct Value
 {
 	char type;
@@ -53,6 +61,7 @@ struct Value
 	Value(float valuef) : type(0x2A), valuef(valuef) {};
 	Value(std::string s);
 	Value(const char* s);
+	Value(Core::ManagedString& ms);
 
 
 	inline static Value Null() {
@@ -61,7 +70,7 @@ struct Value
 
 	inline static Value True()
 	{
-		trvh t{0x2A};
+		trvh t{ 0x2A };
 		t.valuef = 1.0f;
 		return t;
 	}
@@ -69,6 +78,16 @@ struct Value
 	inline static Value False()
 	{
 		return { 0x2A, 0 };
+	}
+
+	inline static Value Global()
+	{
+		return { 0x0E, 0x01 };
+	}
+
+	inline static Value World()
+	{
+		return { 0x0E, 0x00 };
 	}
 
 	/* inline static Value Tralse()
@@ -88,13 +107,25 @@ struct Value
 
 	operator std::string();
 	operator float();
-	Value get(std::string name);
-	Value get_safe(std::string name);
-	Value get_by_id(int id);
-	Value invoke(std::string name, std::vector<Value> args, Value usr = Value::Null());
+	operator bool();
+	ManagedValue get(std::string name);
+	ManagedValue get_safe(std::string name);
+	ManagedValue get_by_id(int id);
+	ManagedValue invoke(std::string name, std::vector<Value> args, Value usr = Value::Null());
 	std::unordered_map<std::string, Value> get_all_vars();
 	bool has_var(std::string name);
 	void set(std::string name, Value value);
+};
+
+struct ManagedValue : Value
+{
+	//This class is used to prevent objects being garbage collected before you are done with them
+	ManagedValue(Value val);
+	ManagedValue(char type, int value);
+	ManagedValue(trvh trvh);
+	ManagedValue(std::string s);
+	ManagedValue(const ManagedValue& other);
+	~ManagedValue();
 };
 
 struct IDArrayEntry
@@ -350,3 +381,10 @@ struct Hellspawn
 	std::uint32_t shove_off;
 	std::uint32_t handle;
 };
+
+struct TableHolderThingy
+{
+	unsigned int length;
+	unsigned int* elements; //?????
+};
+

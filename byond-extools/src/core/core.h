@@ -24,19 +24,70 @@ typedef void(*opcode_handler)(ExecutionContext* ctx);
 #define MIN_COMPATIBLE_MAJOR 512
 #define MIN_COMPATIBLE_MINOR 1484
 
+#define MANAGED(x) Core::ManagedString(x)
+
 extern int ByondVersion;
 extern int ByondBuild;
 
 namespace Core
 {
+	//not exactly a byond structure so it's here for now
+
+	class ManagedString 
+	{
+		// Represents a BYOND string. Refcount gets updated when created and destroyed,
+		// which should help with memory usage and premature string deletion.
+		// Use when passing the string to proc callbacks for example.
+	public:
+		ManagedString(unsigned int id);
+		ManagedString(std::string str); //TODO: find Inc- and DecRefCount and manage the refcount properly
+		ManagedString(const ManagedString& other);
+		~ManagedString();
+
+		operator unsigned int()
+		{
+			return string_id;
+		}
+
+		operator int()
+		{
+			return string_id;
+		}
+
+		operator const char* ()
+		{
+			return string_entry->stringData;
+		}
+
+		operator std::string()
+		{
+			return string_entry->stringData;
+		}
+
+	protected:
+		unsigned int string_id;
+		String* string_entry;
+	};
 	extern std::map<unsigned int, opcode_handler> opcode_handlers;
 	extern std::map<std::string, unsigned int> name_to_opcode;
 	extern ExecutionContext** current_execution_context_ptr;
 	extern ExecutionContext** parent_context_ptr_hack;
 	extern ProcSetupEntry** proc_setup_table;
 	extern unsigned int* some_flags_including_profile;
+	extern unsigned int* name_table_id_ptr;
+	extern unsigned int* name_table;
+	extern Value* global_var_table;
+
+	extern std::unordered_map<std::string, Value*> global_direct_cache;
+	void global_direct_set(std::string name, Value val);
+	Value global_direct_get(std::string name);
+
+
 	//extern std::vector<bool> codecov_executed_procs;
-	unsigned int GetStringId(std::string str);
+	unsigned int GetStringId(std::string str, bool increment_refcount = 0);
+	ManagedString GetManagedString(std::string str);
+	void FreeByondString(std::string s);
+	void FreeByondString(unsigned int id);
 	std::string GetStringFromId(unsigned int id);
 	Value get_turf(int x, int y, int z);
 	extern unsigned int extended_profiling_insanely_hacky_check_if_its_a_new_call_or_resume;
