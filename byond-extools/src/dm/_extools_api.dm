@@ -169,3 +169,24 @@ var/next_promise_id = 0
 	
 /proc/disable_profiling()
 	return call(EXTOOLS, "disable_profiling")() == EXTOOLS_SUCCESS
+	
+/* Altmos - Altoids' atmospherics optimization
+	Greatly improves the performance of LINDA by hooking and TFFIing several aspects of the atmospherics system.
+*/
+/proc/altmos_initialize()
+	return call(EXTOOLS, "altmos_initialize")() == EXTOOLS_SUCCESS
+
+/* Altmos Helper Procs */
+/proc/safe_contents(turf/T)
+	var/list/newlist = list()
+	for(var/i in T.contents)
+		newlist[newlist.len+1] = i
+	return newlist
+
+/proc/gas_types() // A helper proc for Altmos
+	return subtypesof(/datum/gas)
+
+/proc/add_gas(gas_id,out_list) // Like ADD_GAS, but as a proc that can be called as a helper by altmos
+	var/list/tmp_gaslist = GLOB.gaslist_cache[gas_id]
+	out_list[gas_id] = tmp_gaslist.Copy()
+/* End Altmos Procs */
