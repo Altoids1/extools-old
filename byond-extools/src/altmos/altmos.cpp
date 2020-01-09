@@ -1,5 +1,7 @@
 #include "altmos.h"
 
+#define ISNULL(x) (x.type == Value::Null().type)
+
 namespace altmos
 {
     std::unordered_map<std::string, Value> AtmosTypes;
@@ -42,8 +44,8 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
         Dot.valuef = NO_REACTION;
         return Dot;
     }
-    Value air = args[0];
-    Value holder = (n_args > 1) ? args[1] : Value::Null();
+    ManagedValue air = args[0];
+    ManagedValue holder = (n_args > 1) ? args[1] : Value::Null();
     //
     if (Core::stringify(air.get("type")).find("/datum/gas_mixture") == std::string::npos)
     {
@@ -54,7 +56,7 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
     float old_heat_capacity = heat_capacity(air);
     Container cached_gases = air.get("gases"); //Caching speeds things up, still, I think?
     float temperature = air.get("temperature").valuef;
-    Value location = (holder.type == 0x01) ? holder : Value::Null(); // Basically isturf() ? holder : null
+    ManagedValue location = (holder.type == 0x01) ? holder : Value::Null(); // Basically isturf() ? holder : null
     Container cached_results = air.get("reaction_results");
     cached_results["fire"] = Value(0.0f);
     float burned_fuel = 0;
@@ -77,11 +79,10 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
     if (burned_fuel != 0)
     {
         energy_released += (FIRE_HYDROGEN_ENERGY_RELEASED * burned_fuel);
-        if ((location != Value::Null()) && (rand() % 10 == 0) && burned_fuel > TRITIUM_MINIMUM_RADIATION_ENERGY)
+        if (!ISNULL(location) && (rand() % 10 == 0) && burned_fuel > TRITIUM_MINIMUM_RADIATION_ENERGY)
         {
-            Core::Proc radiation_pulse = Core::get_proc("/proc/radiation_pulse",0);
             std::vector<Value> radargs = {location, energy_released/TRITIUM_BURN_RADIOACTIVITY_FACTOR};
-            radiation_pulse.call(radargs, Value::Null(), src);
+            src.invoke("radiation_pulse",radargs, Value::Null());
         }
         //ASSERT_GAS(/datum/gas/water_vapor, air) //oxygen+more-or-less hydrogen=H2O
         //cached_gases[/datum/gas/water_vapor][MOLES] += burned_fuel // Yogs -- Conservation of Mass
@@ -96,20 +97,20 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
             air.set("temperature", Value(temperature));
         }
     }
-    if (location != Value::Null())
+    if (!ISNULL(location))
     {
         if (temperature > FIRE_MINIMUM_TEMPERATURE_TO_EXIST)
         {
             std::vector<Value> nargs = { temperature, CELL_VOLUME };
-            location.invoke("/turf/open/proc/hotspot_expose", nargs);
+            location.invoke("hotspot_expose", nargs);
             nargs = { air, temperature, CELL_VOLUME };
-            Container contents = Core::get_proc("/proc/safe_contents").call({location},Value::Null(),src);
+            Container contents = src.invoke("safe_contents",{location},Value::Null());
             int container_size = contents.length();
             for (int i = 0; i < container_size; ++i)
             {
-               Value(contents[i]).invoke("/proc/temperature_expose", nargs); // Mac save me please
+               ManagedValue(contents[i]).invoke("temperature_expose", nargs); // Mac save me please
             }
-            location.invoke("/proc/temperature_expose", nargs); // Mac save me please
+            location.invoke("temperature_expose", nargs); // Mac save me please
         }
     }
     Dot.valuef = (Value(cached_results["fire"]).valuef != 0) ? REACTING : NO_REACTION;
