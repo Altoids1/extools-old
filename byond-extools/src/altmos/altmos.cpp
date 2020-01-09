@@ -22,6 +22,14 @@ namespace altmos
 
 }
 
+void assert_gas(Value gas_id, Container gas_mixture_gases, Value src) // cousin of #define ASSERT_GAS()
+{
+    if (!Value(gas_mixture_gases[gas_id]))
+    {
+        src.invoke("add_gas", { gas_id, gas_mixture_gases });
+    }
+}
+
 float heat_capacity(Value gas_mixture) // Cousin of /datum/gas_mixture/proc/heat_capacity(data = MOLES) 
 {
     Container cached_gases = gas_mixture.get("gases");
@@ -84,8 +92,9 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
             std::vector<Value> radargs = {location, energy_released/TRITIUM_BURN_RADIOACTIVITY_FACTOR};
             src.invoke("radiation_pulse",radargs, Value::Null());
         }
-        //ASSERT_GAS(/datum/gas/water_vapor, air) //oxygen+more-or-less hydrogen=H2O
-        //cached_gases[/datum/gas/water_vapor][MOLES] += burned_fuel // Yogs -- Conservation of Mass
+        assert_gas(altmos::AtmosTypes["/datum/gas/water_vapor"], cached_gases, src);
+        Container cached_vapor = cached_gases[altmos::AtmosTypes["/datum/gas/water_vapor"]];
+        cached_vapor[Listmos::MOLES] = float(Value(cached_vapor[Listmos::MOLES])) + burned_fuel;
         cached_results["fire"] = burned_fuel;
     }
     if (energy_released > 0)
@@ -108,11 +117,13 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
             int container_size = contents.length();
             for (int i = 0; i < container_size; ++i)
             {
-               ManagedValue(contents[i]).invoke("temperature_expose", nargs); // Mac save me please
+               ManagedValue(contents[i]).invoke("temperature_expose", nargs);
             }
-            location.invoke("temperature_expose", nargs); // Mac save me please
+            location.invoke("temperature_expose", nargs);
         }
     }
     Dot.valuef = (Value(cached_results["fire"]).valuef != 0) ? REACTING : NO_REACTION;
     return Dot;
 }
+
+#undef ISNULL
