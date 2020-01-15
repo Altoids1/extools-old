@@ -4,6 +4,8 @@
 
 
 //DEFINES
+#define ISNULL(x) (x.type == Value::Null().type)
+//
 #define MINIMUM_TRIT_OXYBURN_ENERGY 		2000000
 #define TRITIUM_MINIMUM_RADIATION_ENERGY	0.1
 #define TRITIUM_BURN_OXY_FACTOR				100
