@@ -90,6 +90,7 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
         energy_released += (FIRE_HYDROGEN_ENERGY_RELEASED * burned_fuel);
         if (!ISNULL(location) && (rand() % 10 == 0) && burned_fuel > TRITIUM_MINIMUM_RADIATION_ENERGY)
         {
+            IncRefCount(location.type, location.value);
             std::vector<Value> radargs = {location, energy_released/TRITIUM_BURN_RADIOACTIVITY_FACTOR};
             Core::get_proc("/proc/radiation_pulse").call(radargs);
         }
@@ -112,7 +113,7 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
         if (temperature > FIRE_MINIMUM_TEMPERATURE_TO_EXIST)
         {
             location.invoke("hotspot_expose", { temperature, CELL_VOLUME });
-           
+            //IncRefCount(location.type, location.value);
             Container contents = Core::get_proc("/proc/safe_contents").call({location});
             int container_size = contents.length();
             for (int i = 0; i < container_size; ++i)
