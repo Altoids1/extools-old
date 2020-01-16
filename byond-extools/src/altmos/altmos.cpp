@@ -52,7 +52,7 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
         return Dot;
     }
     ManagedValue air = args[0];
-    ManagedValue holder = (n_args > 1) ? args[1] : Value::Null();
+    ManagedValue holder = (n_args > 1.0f) ? args[1] : Value::Null();
     /*
     if (Core::stringify(air.get("type")).find("/datum/gas_mixture") == std::string::npos)
     {
@@ -81,9 +81,9 @@ trvh TritiumReact(unsigned int n_args, Value* args, Value src) // Hook of /datum
     else
     {
         burned_fuel = initial_trit;
-        cached_trit[Listmos::MOLES] = Value(cached_trit[Listmos::MOLES]).valuef * (1 - 1.0f / TRITIUM_BURN_TRIT_FACTOR);
+        cached_trit[Listmos::MOLES] = Value(cached_trit[Listmos::MOLES]).valuef * (1.0f - 1.0f / TRITIUM_BURN_TRIT_FACTOR);
         cached_oxy[Listmos::MOLES] = Value(cached_oxy[Listmos::MOLES]).valuef - Value(cached_trit[Listmos::MOLES]).valuef;
-        energy_released += (FIRE_HYDROGEN_ENERGY_RELEASED * burned_fuel * (TRITIUM_BURN_TRIT_FACTOR - 1));
+        energy_released += (FIRE_HYDROGEN_ENERGY_RELEASED * burned_fuel * (TRITIUM_BURN_TRIT_FACTOR - 1.0f));
     }
     if (burned_fuel != 0)
     {
