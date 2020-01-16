@@ -1,7 +1,6 @@
 #define EXTOOLS			(world.system_type == MS_WINDOWS ? "byond-extools.dll" : "byond-extools")
 #define EXTOOLS_SUCCESS	"gucci"
 #define EXTOOLS_FAILED	"pain"
-#define GLOBAL_PROC		"magic BS"
 
 /*
 	Core - Provides necessary functionality for other modules.
